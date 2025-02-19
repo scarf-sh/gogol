@@ -8,6 +8,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      : Gogol.Internal.Auth
@@ -20,6 +21,8 @@
 -- Internal types and helpers for constructing OAuth credentials.
 module Gogol.Internal.Auth where
 
+import qualified Text.Read
+import System.Environment (lookupEnv)
 import Control.Exception (Exception, SomeException, catch, throwIO)
 import Control.Exception.Lens (exception)
 import Control.Lens (Prism', prism)
@@ -302,16 +305,33 @@ refreshRequest ::
   m (OAuthToken s)
 refreshRequest rq l m = do
   logDebug l rq -- debug:ClientRequest
-  rs <- liftIO (Client.httpLbs rq m `catch` (throwIO . RetrievalError))
 
-  let bs = Client.responseBody rs
-      s = Client.responseStatus rs
+  skipTokenRefresh <-
+    liftIO $
+      (maybe False (not . null)) <$> lookupEnv "FAKE_GOOGLE_STORAGE_ENDPOINT"
 
-  logDebug l rs -- debug:ClientResponse
-  logTrace l $ "[Response Body]\n" <> bs -- trace:ResponseBody
-  if fromEnum s == 200
+  logDebug l ("[Skip Token Refresh]: " <> show skipTokenRefresh)
+
+  if skipTokenRefresh
+  then pure $ OAuthToken 
+            { _tokenAccess = AccessToken "", 
+              _tokenRefresh = Nothing, 
+              _tokenExpiry = Text.Read.read @UTCTime "2016-05-28 00:00:00 UTC"
+            }
+  else do
+
+    rs <- liftIO (Client.httpLbs rq m `catch` (throwIO . RetrievalError))
+
+    let bs = Client.responseBody rs
+        s = Client.responseStatus rs
+
+    logDebug l rs -- debug:ClientResponse
+    logTrace l $ "[Response Body]\n" <> bs -- trace:ResponseBody
+
+    if fromEnum s == 200
     then success s bs
     else failure s bs
+
   where
     success s bs = do
       f <- parseErr s bs

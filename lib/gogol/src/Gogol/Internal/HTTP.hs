@@ -62,6 +62,9 @@ unsafeRequest Env {..} x =
 
     go = do
       (ct, b) <- getContent _rqBody
+
+      logDebug _envLogger b -- debug:ClientRequest
+
       rq <- authorize (request ct b) _envStore _envLogger _envManager
 
       logDebug _envLogger rq -- debug:ClientRequest
