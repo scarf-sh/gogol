@@ -71,6 +71,7 @@ data Credentials (s :: [Symbol])
     -- of the Google CloudSDK Tools.
     FromUser !AuthorizedUser
   | FromTokenFile !FilePath
+  | FromAccountImpersonation !AccessToken !UTCTime
 
 -- | Service Account credentials which are typically generated/download
 -- from the Google Developer console of the following form:

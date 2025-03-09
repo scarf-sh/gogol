@@ -183,6 +183,13 @@ exchange c l = fmap (Auth c) . action l
       FromClient x n -> exchangeCode x n
       FromUser u -> authorizedUserToken u Nothing
       FromTokenFile f -> \_l _m -> readTokenFile f
+      FromAccountImpersonation accessToken tokenExpiry ->
+        \_logger _manager ->
+          pure $ OAuthToken
+            { _tokenAccess = accessToken,
+              _tokenRefresh = Nothing,
+              _tokenExpiry = tokenExpiry
+            }
 
 -- | Refresh an existing 'OAuthToken'.
 refresh ::
@@ -200,6 +207,13 @@ refresh (Auth c t) l = fmap (Auth c) . action l
       FromClient x _ -> refreshToken x t
       FromUser u -> authorizedUserToken u (_tokenRefresh t)
       FromTokenFile f -> \_l _m -> readTokenFile f
+      FromAccountImpersonation accessToken tokenExpiry ->
+        \_logger _manager ->
+          pure $ OAuthToken
+            { _tokenAccess = accessToken,
+              _tokenRefresh = Nothing,
+              _tokenExpiry = tokenExpiry
+            }
 
 -- | Apply the (by way of possible token refresh) a bearer token to the
 -- authentication header of a request.
